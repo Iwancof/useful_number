@@ -1,0 +1,12 @@
+[package]
+name = "useful_number"
+version = "0.1.0"
+edition = "2021"
+description = "A crate that provides useful number types."
+categories = ["no-std"]
+license = "MIT"
+include = ["src/**/*", "Cargo.toml", "Cargo.lock"]
+repository = "https://github.com/Iwancof/random_struct_layout/"
+
+[dependencies]
+paste = "1.0.15"
