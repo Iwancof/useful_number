@@ -170,6 +170,12 @@ macro_rules! define_update_num_with_data {
                 }
             }
 
+            impl<T> core::default::Default for [<$type_name WithData>]<T> {
+                fn default() -> Self {
+                    Self::new()
+                }
+            }
+
             impl<T> [<$type_name WithData>]<T> {
                 pub fn new() -> Self {
                     Self {
@@ -217,7 +223,7 @@ macro_rules! define_update_num_with_data {
                         Some((&mut self.inner, unsafe { self.data.assume_init_mut() }))
                     }
                 }
-                
+
                 // need to initialize self.inner
                 unsafe fn drop_inner(&mut self) {
                     if self.has_value() {
@@ -237,6 +243,16 @@ macro_rules! define_update_num_with_data {
                     unsafe { self.drop_inner() };
                     self.inner = <$inner>::$initial_value;
                     self.data = core::mem::MaybeUninit::uninit(); // not needed.
+                }
+                pub fn take(self) -> Option<($inner, T)> {
+                    let mut manual = core::mem::ManuallyDrop::new(self);
+
+                    if manual.has_value() {
+                        let data = core::mem::replace(&mut manual.data, core::mem::MaybeUninit::uninit());
+                        return Some((manual.inner, unsafe { data.assume_init() }));
+                    } else {
+                        None
+                    }
                 }
             }
         }
@@ -390,5 +406,25 @@ mod tests {
         unsafe {
             assert_eq!(DROP_COUNTER, 1);
         }
+    }
+
+    #[test]
+    fn test_take() {
+        static mut DROP_COUNTER: i32 = 0;
+
+
+        struct DropMe;
+
+        impl Drop for DropMe {
+            fn drop(&mut self) {
+                unsafe { DROP_COUNTER += 1 };
+            }
+        }
+
+        let v = UpdateToMaxU8WithData::new_with(100, DropMe);
+        let (n, d) = v.take().unwrap();
+
+        assert_eq!(n, 100);
+        core::mem::forget(d);
     }
 }
